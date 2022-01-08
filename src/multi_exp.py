@@ -9,11 +9,12 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 
-class Camera():
+class Camera:
     def __init__(self, cam_info):
         self.camera_nh = -1
         self.capability = None
         self.frame_buffer = None
+        self.config = None
 
         self.load_config()
 
@@ -27,8 +28,7 @@ class Camera():
         self.capability = mvsdk.CameraGetCapability(self.camera_nh)
 
         # calculate and allocate the frame buffer size
-        buffer_size = \
-                self.capability.sResolutionRange.iWidthMax * self.capability.sResolutionRange.iHeightMax * 3
+        buffer_size = self.capability.sResolutionRange.iWidthMax * self.capability.sResolutionRange.iHeightMax * 3
         self.frame_buffer = mvsdk.CameraAlignMalloc(buffer_size, 16)
 
         # config
@@ -64,8 +64,8 @@ class Camera():
         try:
             with open("../config.yaml") as cf:
                 self.config = yaml.load(cf, Loader=yaml.FullLoader)
-                for c in  "dynamic_config", "output_format", "exposure_time",\
-                    "gamma", "contrast", "saturation", "rgb_gain", "sharpness":
+                for c in "dynamic_config", "output_format", "exposure_time", \
+                         "gamma", "contrast", "saturation", "rgb_gain", "sharpness":
                     if c not in self.config:
                         raise yaml.scanner.ScannerError
             ros.loginfo("Loaded config from mv_cam/config.yaml")
@@ -103,7 +103,9 @@ class Camera():
             return frame
 
         except mvsdk.CameraException as e:
-            if e.error_code != mvsdk.CAMERA_STATUS_TIME_OUT:
+            if e.error_code == mvsdk.CAMERA_STATUS_TIME_OUT:
+                ros.logwarn("Grab frame time out")
+            else:
                 ros.logerr("CameraGetImageBuffer failed({}): {}".format(e.error_code, e.message))
             return None
 
@@ -139,7 +141,7 @@ def main():
     seq = 0
     while not ros.is_shutdown():
         image = cam.grab(seq)
- 
+
         if type(image) is np.ndarray:
             img_msg = bridge.cv2_to_imgmsg(image, cam.config["output_format"])
             img_msg.header.seq = seq
@@ -147,7 +149,7 @@ def main():
         else:
             ros.logerr("Not image obtained")
             continue
-        
+
         if seq % 2:
             long_exp_pub.publish(img_msg)
         else:
@@ -160,4 +162,4 @@ def main():
 
 
 if __name__ == "__main__":
-        main()
+    main()

@@ -8,6 +8,7 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 BASE_DIR = "../imgs/"
+FREQ = 1/4
 
 
 class ImageSub:
@@ -15,8 +16,8 @@ class ImageSub:
         self.last_seq = -1
         self.msgs = {'l': None, 's': None}
 
-        self.long_sub = ros.Subscriber("/cam/long_exp",Image, partial(self.cb, 'l'), queue_size=10)
-        self.short_sub = ros.Subscriber("/cam/short_exp",Image, partial(self.cb, 's'), queue_size=10)
+        self.long_sub = ros.Subscriber("/cam/long_exp", Image, partial(self.cb, 'l'), queue_size=1)
+        self.short_sub = ros.Subscriber("/cam/short_exp", Image, partial(self.cb, 's'), queue_size=1)
 
         self.bridge = CvBridge()
 
@@ -39,7 +40,7 @@ class ImageSub:
 
 def main():
     ros.init_node("img_sub")
-    rate = ros.Rate(0.25)
+    rate = ros.Rate(FREQ)
 
     sub = ImageSub()
 
@@ -48,6 +49,7 @@ def main():
     while not ros.is_shutdown():
         sub.save()
         rate.sleep()
+
 
 if __name__ == "__main__":
     main()
