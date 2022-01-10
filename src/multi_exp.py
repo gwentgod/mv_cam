@@ -5,6 +5,7 @@ import yaml
 import numpy as np
 
 import rospy as ros
+from rospkg import RosPack
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
@@ -15,6 +16,9 @@ class Camera:
         self.capability = None
         self.frame_buffer = None
         self.config = None
+
+        self.rospack = RosPack()
+        self.pack_path = self.rospack.get_path("mv_cam")
 
         try:
             self.camera_nh = mvsdk.CameraInit(cam_info, -1, -1)
@@ -48,7 +52,7 @@ class Camera:
 
     def load_config(self):
         try:
-            with open("../config.yaml") as cf:
+            with open(self.pack_path + "/config.yaml") as cf:
                 self.config = yaml.load(cf, Loader=yaml.FullLoader)
             for c in "dynamic_config", "output_format", "exposure_time", \
                      "contrast", "saturation", "rgb_gain", "sharpness":

@@ -4,10 +4,12 @@ import os, cv2
 from functools import partial
 
 import rospy as ros
+from rospkg import RosPack
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
-BASE_DIR = "../imgs/"
+rospack = RosPack()
+BASE_DIR = rospack.get_path("mv_cam") + "/imgs/"
 FREQ = 1/4
 
 
