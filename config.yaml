@@ -1,11 +1,10 @@
-dynamic_config: true
+dynamic_config: false
 
 output_format: "bgr8"
 
-exposure_time: [15000, 1500]
+exposure_time: [18000, 1500]
 
-gamma: 1
 contrast: 100
 saturation: 100
-rgb_gain: [91, 87, 100]
+rgb_gain: [90, 85, 120]
 sharpness: 0

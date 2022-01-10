@@ -16,8 +16,6 @@ class Camera:
         self.frame_buffer = None
         self.config = None
 
-        self.load_config()
-
         try:
             self.camera_nh = mvsdk.CameraInit(cam_info, -1, -1)
         except mvsdk.CameraException as e:
@@ -31,19 +29,7 @@ class Camera:
         buffer_size = self.capability.sResolutionRange.iWidthMax * self.capability.sResolutionRange.iHeightMax * 3
         self.frame_buffer = mvsdk.CameraAlignMalloc(buffer_size, 16)
 
-        # config
-        if self.config["output_format"] == "bgr10":
-            mvsdk.CameraSetIspOutFormat(self.camera_nh, mvsdk.CAMERA_MEDIA_TYPE_BGR10)
-        elif self.config["output_format"] == "bgr12":
-            mvsdk.CameraSetIspOutFormat(self.camera_nh, mvsdk.CAMERA_MEDIA_TYPE_BGR12)
-        else:
-            mvsdk.CameraSetIspOutFormat(self.camera_nh, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
-
-        mvsdk.CameraSetGamma(self.camera_nh, self.config["gamma"])
-        mvsdk.CameraSetContrast(self.camera_nh, self.config["contrast"])
-        mvsdk.CameraSetSaturation(self.camera_nh, self.config["saturation"])
-        mvsdk.CameraSetGain(self.camera_nh, *self.config["rgb_gain"])
-        mvsdk.CameraSetSharpness(self.camera_nh, self.config["sharpness"])
+        self.load_config()
 
         # set trigger mode to soft trigger
         mvsdk.CameraSetTriggerMode(self.camera_nh, 1)
@@ -64,31 +50,38 @@ class Camera:
         try:
             with open("../config.yaml") as cf:
                 self.config = yaml.load(cf, Loader=yaml.FullLoader)
-                for c in "dynamic_config", "output_format", "exposure_time", \
-                         "gamma", "contrast", "saturation", "rgb_gain", "sharpness":
-                    if c not in self.config:
-                        raise yaml.scanner.ScannerError
+            for c in "dynamic_config", "output_format", "exposure_time", \
+                     "contrast", "saturation", "rgb_gain", "sharpness":
+                if c not in self.config:
+                    raise Exception
             ros.loginfo("Loaded config from mv_cam/config.yaml")
-            return
 
-        except FileNotFoundError:
-            ros.logwarn("No config file fond")
-        except yaml.scanner.ScannerError:
-            ros.logerr("Failed parsing config")
+        except:
+            ros.logwarn("Load config faild, using default")
+            self.config = {
+                "dynamic_config": False,
+                "output_format": "bgr8",
+                "exposure_time": [18000, 1500],
+                "contrast": 100,
+                "saturation": 100,
+                "rgb_gain": [90, 85, 120],
+                "sharpness": 0
+            }
 
-        ros.logwarn("Using default")
-        self.config = {
-            "output_format": "bgr8",
-            "exposure_time": [15000, 1500],
-            "gamma": 1,
-            "contrast": 100,
-            "saturation": 100,
-            "rgb_gain": [91, 87, 100],
-            "sharpness": 0
-        }
+        if self.config["output_format"] == "bgr10":
+            mvsdk.CameraSetIspOutFormat(self.camera_nh, mvsdk.CAMERA_MEDIA_TYPE_BGR10)
+        elif self.config["output_format"] == "bgr12":
+            mvsdk.CameraSetIspOutFormat(self.camera_nh, mvsdk.CAMERA_MEDIA_TYPE_BGR12)
+        else:
+            mvsdk.CameraSetIspOutFormat(self.camera_nh, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
+
+        mvsdk.CameraSetContrast(self.camera_nh, self.config["contrast"])
+        mvsdk.CameraSetSaturation(self.camera_nh, self.config["saturation"])
+        mvsdk.CameraSetGain(self.camera_nh, *self.config["rgb_gain"])
+        mvsdk.CameraSetSharpness(self.camera_nh, self.config["sharpness"])
 
     def grab(self, seq):
-        mvsdk.CameraSetExposureTime(self.camera_nh, self.config["exposure_time"][seq % 2])
+        mvsdk.CameraSetExposureTime(self.camera_nh, self.config["exposure_time"][seq%2])
         mvsdk.CameraSoftTrigger(self.camera_nh)
 
         try:
@@ -107,6 +100,7 @@ class Camera:
                 ros.logwarn("Grab frame time out")
             else:
                 ros.logerr("CameraGetImageBuffer failed({}): {}".format(e.error_code, e.message))
+
             return None
 
 
@@ -155,7 +149,7 @@ def main():
         else:
             short_exp_pub.publish(img_msg)
 
-        if cam.config["dynamic_config"] and seq % 50 == 0:
+        if cam.config["dynamic_config"] and seq % 100 == 0:
             cam.load_config()
 
         seq += 1
